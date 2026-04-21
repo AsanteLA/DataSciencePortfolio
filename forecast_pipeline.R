@@ -62,12 +62,12 @@ theme_set(theme_minimal(base_size = 12))
 # Columns: date, weekly_units (target), is_peak_period, avg_temp_f,
 # transport_cost_idx, price_index, local_unemp_rate.
 center_data <- read_csv("data/distribution_center_weekly.csv",
-                        show_col_types = FALSE) %>%
+                        show_col_types = FALSE)  |> 
   # modeltime/timetk expect the date column to be a proper Date, and the
   # tibble to be sorted chronologically. Sorting also guarantees that our
   # time-based split behaves as expected.
-  mutate(date = as.Date(date)) %>%
-  arrange(date)
+  mutate(date = as.Date(date)) |>
+  arrange(date) 
 
 # Quick sanity check -- eyeballed during development; left in for anyone
 # re-running the script for the first time.
@@ -89,7 +89,7 @@ cat(sprintf(
 # plot_series: weekly units over the full date range, with peak weeks
 # highlighted in red. Peak weeks are visually obvious in early-Feb every year
 # (the big spike) -- this plot makes that story land without any narration.
-plot_series <- center_data %>%
+plot_series <- center_data |>
   ggplot(aes(x = date, y = weekly_units)) +
   geom_line(color = "#2b4c7e", size = 0.7) +
   geom_point(
@@ -108,7 +108,7 @@ ggsave("plots/plot_series.png", plot_series, width = 12, height = 5.5, dpi = 160
 # timetk's seasonal diagnostic decomposes the series by week-of-year,
 # month, and quarter -- useful for confirming there's a real annual
 # seasonal signal (there is; the early-Feb spike drives most of it).
-plot_seasonality <- center_data %>%
+plot_seasonality <- center_data |>
   plot_seasonal_diagnostics(
     date, weekly_units,
     .interactive = FALSE,
@@ -119,7 +119,7 @@ ggsave("plots/plot_seasonality.png", plot_seasonality,
 
 # ACF / PACF help us reason about AR and MA orders before letting auto_arima
 # pick them automatically.
-plot_acf <- center_data %>%
+plot_acf <- center_data |>
   plot_acf_diagnostics(
     date, weekly_units,
     .interactive = FALSE,
@@ -139,7 +139,7 @@ ggsave("plots/plot_acf.png", plot_acf, width = 12, height = 5, dpi = 160)
 # validation). 24 weeks ≈ two full quarters and, importantly for THIS data,
 # covers one of the early-Feb peaks -- so we are actually testing the hard
 # part of the forecast.
-splits <- center_data %>%
+splits <- center_data |>
   time_series_split(
     date_var   = date,
     assess     = "24 weeks",
@@ -150,8 +150,8 @@ training_data <- training(splits)
 testing_data  <- testing(splits)
 
 # Visualize the split so we can confirm the test window lands where we expect.
-plot_cv_plan <- splits %>%
-  tk_time_series_cv_plan() %>%
+plot_cv_plan <- splits |>
+  tk_time_series_cv_plan() |>
   plot_time_series_cv_plan(
     date, weekly_units,
     .title = "Train / Test Split",
@@ -176,7 +176,7 @@ recipe_prophet_xreg <- recipe(
 # Model 1: Auto-ARIMA with external regressors (the workhorse of classical
 # forecasting). seasonal_period = 52 is CRITICAL for weekly data -- left
 # unset, modeltime guesses and can land on a nonsensical period.
-spec_arima <- arima_reg(seasonal_period = 52) %>%
+spec_arima <- arima_reg(seasonal_period = 52) |>
   set_engine("auto_arima")
 
 # Model 2: Boosted ARIMA. ARIMA carries the seasonal backbone, XGBoost
@@ -189,7 +189,7 @@ spec_arima_boost_tune <- arima_boost(
     tree_depth      = tune(),
     learn_rate      = tune(),
     min_n           = tune()
-  ) %>%
+  ) |>
   set_engine("auto_arima_xgboost")
 
 # Model 3: Prophet. Additive decomposition of trend + yearly seasonality +
@@ -201,24 +201,24 @@ spec_prophet_tune <- prophet_reg(
     changepoint_range        = tune(),
     prior_scale_changepoints = tune(),
     prior_scale_seasonality  = tune()
-  ) %>%
+  ) |>
   set_engine("prophet")
 
 # --- Workflows (pre-tuning) -------------------------------------------------
 # ARIMA has no tune() placeholders -- auto_arima does its own stepwise
 # search internally, so we fit this one directly. For the other two we
 # build workflows WITHOUT fitting; tune_grid() needs unfitted workflows.
-wflow_arima <- workflow() %>%
-  add_recipe(recipe_prophet_xreg) %>%
-  add_model(spec_arima) %>%
+wflow_arima <- workflow() |>
+  add_recipe(recipe_prophet_xreg) |>
+  add_model(spec_arima) |>
   fit(training_data)
 
-wflow_arima_boost_tune <- workflow() %>%
-  add_recipe(recipe_prophet_xreg) %>%
+wflow_arima_boost_tune <- workflow() |>
+  add_recipe(recipe_prophet_xreg) |>
   add_model(spec_arima_boost_tune)
 
-wflow_prophet_tune <- workflow() %>%
-  add_recipe(recipe_prophet_xreg) %>%
+wflow_prophet_tune <- workflow() |>
+  add_recipe(recipe_prophet_xreg) |>
   add_model(spec_prophet_tune)
 
 
@@ -246,7 +246,7 @@ set.seed(2026)
 # initial = 18 months of training history per slice
 # assess  = 12 weeks of CV validation per slice
 # slice_limit = 3 keeps compute honest on ~100 rows
-resamples_tscv <- training_data %>%
+resamples_tscv <- training_data |>
   time_series_cv(
     date_var    = date,
     initial     = "18 months",
@@ -257,8 +257,8 @@ resamples_tscv <- training_data %>%
   )
 
 # Visualize the CV plan so you can confirm it looks right before tuning.
-plot_tscv <- resamples_tscv %>%
-  tk_time_series_cv_plan() %>%
+plot_tscv <- resamples_tscv |>
+  tk_time_series_cv_plan() |>
   plot_time_series_cv_plan(date, weekly_units,
                            .title = "Rolling-origin CV plan (tuning folds)",
                            .interactive = FALSE)
@@ -298,7 +298,7 @@ tune_ctrl <- control_grid(save_pred = FALSE, verbose = FALSE, allow_par = TRUE)
 # splits), and Prophet's L-BFGS optimizer has a small stochastic
 # initialization. Seeding makes both deterministic across reruns.
 set.seed(2026)
-tune_boost <- wflow_arima_boost_tune %>%
+tune_boost <- wflow_arima_boost_tune |>
   tune_grid(
     resamples = resamples_tscv,
     grid      = grid_boost,
@@ -307,7 +307,7 @@ tune_boost <- wflow_arima_boost_tune %>%
   )
 
 set.seed(2026)
-tune_prophet <- wflow_prophet_tune %>%
+tune_prophet <- wflow_prophet_tune |>
   tune_grid(
     resamples = resamples_tscv,
     grid      = grid_prophet,
@@ -327,10 +327,10 @@ print(show_best(tune_prophet, metric = "rmse", n = 5))
 # one standard error of the outright best. The trailing columns tell it
 # which direction "simpler" runs -- fewer trees / fewer changepoints are
 # simpler, so we list those columns.
-best_boost_params <- tune_boost %>%
+best_boost_params <- tune_boost |>
   select_by_one_std_err(metric = "rmse", trees, tree_depth)
 
-best_prophet_params <- tune_prophet %>%
+best_prophet_params <- tune_prophet |>
   select_by_one_std_err(metric = "rmse", changepoint_num, prior_scale_changepoints)
 
 cat("\nSelected boosted-ARIMA hyperparameters (1-SE rule):\n")
@@ -345,13 +345,13 @@ print(best_prophet_params)
 # re-seed before each final fit so the saved pinned model exactly matches
 # what the tuning summary suggested.
 set.seed(2026)
-wflow_arima_boost <- wflow_arima_boost_tune %>%
-  finalize_workflow(best_boost_params) %>%
+wflow_arima_boost <- wflow_arima_boost_tune |>
+  finalize_workflow(best_boost_params) |>
   fit(training_data)
 
 set.seed(2026)
-wflow_prophet <- wflow_prophet_tune %>%
-  finalize_workflow(best_prophet_params) %>%
+wflow_prophet <- wflow_prophet_tune |>
+  finalize_workflow(best_prophet_params) |>
   fit(training_data)
 
 
@@ -368,7 +368,7 @@ models_tbl <- modeltime_table(
 # Calibration computes out-of-sample residuals and confidence intervals on
 # the test set. It is the thing the accuracy() and forecast() calls below
 # read from -- you cannot skip this step.
-calibration_tbl <- models_tbl %>%
+calibration_tbl <- models_tbl |>
   modeltime_calibrate(new_data = testing_data)
 
 # modeltime_accuracy() reports MAE, MAPE, SMAPE, MASE, RMSE, and R² for
@@ -376,7 +376,7 @@ calibration_tbl <- models_tbl %>%
 # RMSE most heavily: MAPE gives a unit-free error in the same language the
 # ops team uses ("we're typically off by X%"), and RMSE punishes the big
 # peak-week misses that matter most for capacity planning.
-accuracy_tbl <- calibration_tbl %>%
+accuracy_tbl <- calibration_tbl |>
   modeltime_accuracy()
 
 print(accuracy_tbl)
@@ -384,8 +384,8 @@ print(accuracy_tbl)
 # Persist the accuracy table so we can embed it in the portfolio README.
 # NB: model names that print as "REGRESSION WITH ARIMA ERRORS" are using
 # the statistical definition of "errors" = "residuals". Don't panic.
-accuracy_tbl %>%
-  select(.model_id, .model_desc, .type, mae, mape, smape, rmse, rsq) %>%
+accuracy_tbl |>
+  select(.model_id, .model_desc, .type, mae, mape, smape, rmse, rsq) |>
   write_csv("accuracy_table.csv")
 
 # --- Extra performance diagnostics -----------------------------------------
@@ -400,18 +400,18 @@ accuracy_tbl %>%
 
 # (a) Pretty HTML render of the accuracy table -- useful in notebooks /
 # R Markdown. gt_tbl is an htmlwidget, so it pops up in the Viewer pane.
-accuracy_tbl %>%
+accuracy_tbl |>
   table_modeltime_accuracy(.interactive = FALSE)
 
 # (b) Per-model residual summary. modeltime_residuals() returns the test-set
 # predictions and residuals (actual - predicted) for each model. Good
 # residuals are mean-zero with symmetric spread; systematic bias shows up
 # as a non-zero mean.
-residuals_tbl <- calibration_tbl %>%
+residuals_tbl <- calibration_tbl |>
   modeltime_residuals()
 
-residuals_summary <- residuals_tbl %>%
-  group_by(.model_id, .model_desc) %>%
+residuals_summary <- residuals_tbl |>
+  group_by(.model_id, .model_desc) |>
   summarize(
     mean_residual   = mean(.residuals, na.rm = TRUE),   # bias
     median_residual = median(.residuals, na.rm = TRUE), # robust bias
@@ -424,7 +424,7 @@ print(residuals_summary)
 
 # Residual diagnostic plot (time plot + ACF + histogram, per model).
 # Useful for sanity-checking that residuals look like noise, not structure.
-plot_residuals <- residuals_tbl %>%
+plot_residuals <- residuals_tbl |>
   plot_modeltime_residuals(.type = "timeplot", .interactive = FALSE)
 ggsave("plots/plot_residuals.png", plot_residuals,
        width = 12, height = 5, dpi = 160)
@@ -432,23 +432,23 @@ ggsave("plots/plot_residuals.png", plot_residuals,
 # (c) Prediction-interval coverage. If our 80% PI is well-calibrated, about
 # 80% of the test observations should fall inside [conf_lo, conf_hi]. Much
 # less than that = we're overconfident; much more = we're too timid.
-coverage_tbl <- calibration_tbl %>%
+coverage_tbl <- calibration_tbl |>
   modeltime_forecast(
     new_data      = testing_data,
     actual_data   = center_data,
     conf_interval = 0.80
-  ) %>%
-  filter(.key == "prediction") %>%           # forecast rows only
+  ) |>
+  filter(.key == "prediction") |>           # forecast rows only
   mutate(in_interval = .value >= .conf_lo &  # did actuals fall inside?
-                        .value <= .conf_hi) %>%
+                        .value <= .conf_hi) |>
   # Join actuals back onto the forecast rows to compute coverage correctly.
   # (.value on prediction rows is the point forecast, not the actual.)
   left_join(
-    testing_data %>% select(date = date, actual = weekly_units),
+    testing_data |> select(date = date, actual = weekly_units),
     by = c(".index" = "date")
-  ) %>%
-  mutate(in_interval = actual >= .conf_lo & actual <= .conf_hi) %>%
-  group_by(.model_id, .model_desc) %>%
+  ) |>
+  mutate(in_interval = actual >= .conf_lo & actual <= .conf_hi) |>
+  group_by(.model_id, .model_desc) |>
   summarize(
     coverage_80pi = mean(in_interval, na.rm = TRUE),
     .groups = "drop"
@@ -458,12 +458,12 @@ print(coverage_tbl)
 # The forecast comparison plot: each model's test-set predictions drawn on
 # top of the full actual series. This is the centerpiece of the portfolio
 # write-up because it shows *how* each model fails where it does.
-plot_forecast_comparison <- calibration_tbl %>%
+plot_forecast_comparison <- calibration_tbl |>
   modeltime_forecast(
     new_data    = testing_data,
     actual_data = center_data,
     conf_interval = 0.80
-  ) %>%
+  ) |>
   plot_modeltime_forecast(
     .interactive = FALSE,
     .title       = "Forecast Comparison on 24-Week Test Set"
@@ -477,8 +477,8 @@ ggsave("plots/forecast_comparison.png", plot_forecast_comparison,
 # "Best" is lowest RMSE on the test set. We use RMSE (not MAPE) for
 # selection because RMSE penalizes the big peak-week misses more heavily,
 # and those are the misses that actually hurt the business downstream.
-best_model_id <- accuracy_tbl %>%
-  slice_min(rmse, n = 1) %>%
+best_model_id <- accuracy_tbl |>
+  slice_min(rmse, n = 1) |>
   pull(.model_id)
 
 cat(sprintf("Best model_id by RMSE: %d\n", best_model_id))
@@ -491,8 +491,8 @@ cat(sprintf("Best model_id by RMSE: %d\n", best_model_id))
 # artifact, so we want the same coefficients / the same forecast on every
 # rerun of the script.
 set.seed(2026)
-refit_tbl <- calibration_tbl %>%
-  filter(.model_id == best_model_id) %>%
+refit_tbl <- calibration_tbl |>
+  filter(.model_id == best_model_id) |>
   modeltime_refit(data = center_data)
 
 # --- Build a future frame for the forward forecast -------------------------
@@ -512,16 +512,16 @@ refit_tbl <- calibration_tbl %>%
 #   * transport_cost_idx -> last-observation-carried-forward. A slow-moving
 #                        economic index doesn't warrant a fancy forecast
 #                        over 24 weeks; the last observed value is fine.
-last_year <- center_data %>%
-  filter(date >= max(date) - weeks(52)) %>%
+last_year <- center_data |>
+  filter(date >= max(date) - weeks(52)) |>
   mutate(iso_week = isoweek(date))
 
-future_tbl <- center_data %>%
-  future_frame(.date_var = date, .length_out = "24 weeks") %>%
-  mutate(iso_week = isoweek(date)) %>%
+future_tbl <- center_data |>
+  future_frame(.date_var = date, .length_out = "24 weeks") |>
+  mutate(iso_week = isoweek(date)) |>
   left_join(
-    last_year %>%
-      group_by(iso_week) %>%
+    last_year |>
+      group_by(iso_week) |>
       summarize(
         is_peak_period      = as.integer(round(mean(is_peak_period))),
         avg_temp_f          = mean(avg_temp_f),
@@ -529,7 +529,7 @@ future_tbl <- center_data %>%
         .groups = "drop"
       ),
     by = "iso_week"
-  ) %>%
+  ) |>
   # Final safety net: any ISO week we don't have last-year data for gets
   # the full-series mean. In practice this shouldn't trigger, but better
   # to have it than to explode at predict-time.
@@ -537,16 +537,16 @@ future_tbl <- center_data %>%
     is_peak_period     = coalesce(is_peak_period,     0L),
     avg_temp_f         = coalesce(avg_temp_f,         mean(center_data$avg_temp_f)),
     transport_cost_idx = coalesce(transport_cost_idx, tail(center_data$transport_cost_idx, 1))
-  ) %>%
+  ) |>
   select(date, is_peak_period, avg_temp_f, transport_cost_idx)
 
 # Forward forecast: winning model, next 24 weeks, with 80% prediction intervals.
-plot_forward_forecast <- refit_tbl %>%
+plot_forward_forecast <- refit_tbl |>
   modeltime_forecast(
     new_data    = future_tbl,
     actual_data = center_data,
     conf_interval = 0.80
-  ) %>%
+  ) |>
   plot_modeltime_forecast(
     .interactive = FALSE,
     .title       = "Forward Forecast — Next 24 Weeks"
@@ -575,7 +575,7 @@ student_net_id <- "kal79"
 # fitting. That's the shape vetiver_model() needs: its workflow method builds
 # a description from the workflow spec rather than drilling into modeltime's
 # engine bridge classes (which have no vetiver S3 methods and would error).
-best_fit <- refit_tbl %>%
+best_fit <- refit_tbl |>
   pluck(".model", 1)
 
 # Create a vetiver model object. model_name is also the pin name on every
@@ -589,7 +589,7 @@ deployable_model
 
 # Pin to a local board (the pin name is taken from deployable_model$model_name)
 model_board <- board_folder("models")
-model_board %>% vetiver_pin_write(deployable_model)
+model_board |> vetiver_pin_write(deployable_model)
 
 # Generate Docker deployment files -- second arg must match the local pin name
 vetiver_prepare_docker(
@@ -613,7 +613,7 @@ test_preds
 library(httr)
 library(jsonlite)
 
-one_week <- testing_data %>% slice(1)
+one_week <- testing_data |> slice(1)
 one_week_json <- toJSON(one_week)
 
 response <- POST(
@@ -622,7 +622,7 @@ response <- POST(
   content_type_json()
 )
 
-single_pred <- fromJSON(content(response, as = "text", encoding = "UTF-8")) %>%
+single_pred <- fromJSON(content(response, as = "text", encoding = "UTF-8")) |>
   as_tibble()
 single_pred
 
