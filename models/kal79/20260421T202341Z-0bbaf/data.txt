@@ -1,0 +1,18 @@
+file: kal79.rds
+file_size: 35371
+pin_hash: 0bbaf7411f368d48
+type: rds
+title: 'kal79: a pinned list'
+description: A prophet regression modeling workflow
+tags: ~
+urls: ~
+created: 20260421T202341Z
+api_version: 1
+user:
+  required_pkgs:
+  - modeltime
+  - parsnip
+  - prophet
+  - recipes
+  - workflows
+  renv_lock: ~

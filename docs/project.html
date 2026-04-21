@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project · Weekly Demand Forecasting</title>
+  <meta name="description" content="How I built a 24-week-ahead demand forecast with modeltime — problem framing, modeling choices, and deployment pattern." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="brand"><span class="brand-dot"></span>Asante Laryea-Akrong</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="project.html">Project</a></li>
+      <li><a href="results.html">Results</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero container">
+  <span class="eyebrow reveal">The Project</span>
+  <h1 data-animate-title>Planning before coding. Every time.</h1>
+  <p class="hero-lede reveal">
+    The shape of a forecasting project matters as much as the model choice.
+    Here's how I scoped the problem, chose the candidates, and built the pipeline
+    end-to-end — with the reasoning that went into every decision.
+  </p>
+</header>
+
+<section class="section container">
+  <h2 class="reveal">Dataset</h2>
+  <p class="reveal">
+    Two and a half years of weekly observations (131 rows) covering early 2022 through
+    August 2024. Six predictors plus the target:
+  </p>
+  <table class="metrics-table reveal">
+    <thead><tr><th>Column</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>weekly_units</code></td><td>Units shipped that week — the forecast target.</td></tr>
+      <tr><td><code>is_peak_period</code></td><td>Binary flag for holiday / peak demand weeks.</td></tr>
+      <tr><td><code>avg_temp_f</code></td><td>Regional weekly average temperature (°F).</td></tr>
+      <tr><td><code>transport_cost_idx</code></td><td>Index of regional transportation / fuel costs.</td></tr>
+      <tr><td><code>price_index</code></td><td>Consumer price index. <em>Not used</em> — slow-moving macro feature, overfit risk on a short series.</td></tr>
+      <tr><td><code>local_unemp_rate</code></td><td>Local unemployment rate. <em>Not used</em> — same reasoning.</td></tr>
+    </tbody>
+  </table>
+
+  <figure class="figure reveal">
+    <img src="assets/images/plot_seasonality.png" alt="Seasonal overlay by ISO week" />
+    <figcaption>Seasonal overlay: overlaying each year's weekly volume by ISO week makes the early-February peak obvious. The holiday flag lines up with those spikes.</figcaption>
+  </figure>
+</section>
+
+<section class="section container">
+  <h2 class="reveal">Modeling approach</h2>
+  <p class="reveal">
+    Three classical <code>modeltime</code> candidates, all sharing a single recipe with
+    three external regressors (<code>is_peak_period</code>, <code>avg_temp_f</code>,
+    <code>transport_cost_idx</code>). Sharing the recipe keeps the three-way comparison
+    apples-to-apples on architecture — not on preprocessing.
+  </p>
+
+  <div class="grid stagger">
+    <div class="card">
+      <span class="kicker">Model 1</span>
+      <h3>Auto-ARIMA</h3>
+      <p>
+        <code>arima_reg(seasonal_period = 52)</code>. The classical baseline. ARIMA
+        handles the seasonal backbone; the xregs anchor peak weeks it otherwise couldn't see.
+      </p>
+    </div>
+    <div class="card">
+      <span class="kicker">Model 2</span>
+      <h3>Boosted ARIMA</h3>
+      <p>
+        <code>arima_boost() / auto_arima_xgboost</code>. ARIMA for seasonality + trend,
+        XGBoost learning non-linear residual structure from the regressors. Good architecture
+        when you suspect interactions — <em>cold week × peak week</em>, that kind of thing.
+      </p>
+    </div>
+    <div class="card">
+      <span class="kicker">Model 3</span>
+      <h3>Prophet</h3>
+      <p>
+        <code>prophet_reg(seasonality_yearly = TRUE)</code>. Additive trend + yearly
+        seasonality + regressor effects. Designed exactly for a holiday-driven business
+        series like this one.
+      </p>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <h3 class="reveal">Why these three, and not a neural net?</h3>
+  <p class="reveal">
+    With 131 rows of training data, a deep-learning model would memorize the two February
+    peaks. The best model here turned out to be the simplest of the three. Discipline beat
+    cleverness — a pattern I'll keep reaching for.
+  </p>
+</section>
+
+<section class="section container">
+  <h2 class="reveal">The split</h2>
+  <p class="reveal">
+    Time series data can't be split randomly. Random splits train on the future and test on
+    the past, which defeats the entire purpose of forecasting. The right pattern is a
+    <em>time-based split</em>: the most recent window is held out as a test set, everything
+    prior becomes training data.
+  </p>
+  <pre class="reveal"><code>splits &lt;- center_data %&gt;%
+  time_series_split(
+    date_var   = date,
+    assess     = "24 weeks",
+    cumulative = TRUE
+  )</code></pre>
+  <figure class="figure reveal">
+    <img src="assets/images/plot_time_series_cv_plan.png" alt="Train/test split visualization" />
+    <figcaption>The training window (blue) is everything before the final 24 weeks; the red tail is the held-out test set.</figcaption>
+  </figure>
+</section>
+
+<section class="section container">
+  <h2 class="reveal">Evaluation strategy</h2>
+  <p class="reveal">
+    All three candidates get ranked on the standard modeltime accuracy metrics — MAE, MAPE,
+    SMAPE, MASE, RMSE, R². I <em>select</em> on RMSE and <em>report</em> MAPE. Here's why.
+  </p>
+  <p class="reveal">
+    The ops team thinks in percentages, but the overtime budget thinks in absolute units.
+    RMSE punishes the big peak-week misses more than MAPE does, and those are the misses
+    that actually cost money. So the selection metric matches the cost structure; the
+    reporting metric matches the audience. Claude tried to talk me into picking on MAPE
+    early in the planning chat. I pushed back. The disagreement ended up sharpening the
+    spec — see <a href="about.html">the about page</a> for more on how I worked with AI.
+  </p>
+</section>
+
+<section class="section container">
+  <h2 class="reveal">Deployment</h2>
+  <p class="reveal">
+    Whichever candidate wins goes through the same path: refit on full data, extract the
+    workflow, wrap in <code>vetiver_model()</code>, pin locally, generate a Docker image,
+    and pin to S3 for graded hold-out scoring.
+  </p>
+  <pre class="reveal"><code>best_fit &lt;- refit_tbl %&gt;% pluck(".model", 1)
+
+deployable_model &lt;- vetiver_model(
+  best_fit,
+  model_name = "kal79"  # drives the pin name on every board
+)
+
+model_board &lt;- board_folder("models")
+model_board %&gt;% vetiver_pin_write(deployable_model)
+
+vetiver_prepare_docker(model_board, "kal79")</code></pre>
+  <p class="reveal">
+    One real footgun: if you fit a bare parsnip spec instead of a workflow,
+    <code>vetiver_model()</code> errors out on the modeltime engine bridge because it has
+    no <code>describe()</code> method for it. Always wrap specs in
+    <code>workflow() %&gt;% add_recipe() %&gt;% add_model() %&gt;% fit()</code>.
+  </p>
+</section>
+
+<section class="section container">
+  <h2 class="reveal">The future-frame wrinkle</h2>
+  <p class="reveal">
+    Prophet (and any model that uses external regressors) needs those regressors to exist
+    for the forecast horizon. <code>modeltime_forecast(h = "24 weeks")</code> on its own
+    builds a future frame with only <code>date</code> — Prophet refuses to predict.
+  </p>
+  <p class="reveal">The fix is to populate each regressor with a sensible prior:</p>
+  <ul class="reveal">
+    <li><code>is_peak_period</code>: seasonal-naive by ISO week. If ISO-week 6 was a peak week in 2024, it's a peak week in 2025. The holiday calendar doesn't move much.</li>
+    <li><code>avg_temp_f</code>: same seasonal-naive pattern. Last year's week-N average is a strong prior.</li>
+    <li><code>transport_cost_idx</code>: last-observation carried forward. Over 24 weeks the LOCF approximation is fine for a slow-moving index.</li>
+  </ul>
+</section>
+
+<section class="section container">
+  <div class="reveal">
+    <h2>Want the numbers?</h2>
+    <p class="lead">The accuracy table, the forecast overlays, and the forward forecast live on the <a href="results.html">results page</a>.</p>
+    <a class="btn primary" href="results.html">See the results →</a>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div>© 2026 Asante Laryea-Akrong</div>
+    <div>
+      <a href="https://github.com/AsanteLA" target="_blank" rel="noopener">GitHub</a> ·
+      <a href="mailto:asante.laryea.akrong@gmail.com">Email</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>

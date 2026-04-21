@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About · Asante Laryea-Akrong</title>
+  <meta name="description" content="About Asante Laryea-Akrong and how he approached this project — working with AI as a pair programmer, not a ghostwriter." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="brand"><span class="brand-dot"></span>Asante Laryea-Akrong</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="project.html">Project</a></li>
+      <li><a href="results.html">Results</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero container">
+  <span class="eyebrow reveal">About</span>
+  <h1 data-animate-title>Hi, I'm Asante.</h1>
+  <p class="hero-lede reveal">
+    I'm a data-minded student building my way into analytics work where the
+    modeling is as rigorous as the storytelling. This project is one of the
+    ones I'm happiest with.
+  </p>
+</header>
+
+<section class="section container">
+  <h2 class="reveal">How I worked with AI on this project</h2>
+  <p class="reveal">
+    I used Claude as a pair programmer through the whole project — aggressively for
+    knowledge transfer on the <code>modeltime</code> package, conservatively for code
+    generation. I'd never touched modeltime, Prophet, or ARIMA before this week, and the
+    fastest path to fluency was a continuous planning chat where I could ask real questions
+    and push back when a suggestion didn't hold up.
+  </p>
+
+  <div class="grid stagger">
+    <div class="card">
+      <span class="kicker">Knowledge transfer</span>
+      <h3>Compress the learning curve</h3>
+      <p>
+        First hour was spent asking Claude to map the tidymodels workflow I already knew
+        onto the modeltime pipeline, explain calibration, and teach me why time series
+        can't be split randomly. The transcript is in <code>PLANNING_CHAT.md</code>.
+      </p>
+    </div>
+    <div class="card">
+      <span class="kicker">Code I wrote myself</span>
+      <h3>Own the important lines</h3>
+      <p>
+        Every recipe, workflow, model spec, and the custom future-frame logic. I wanted
+        to be able to defend every line in a code review.
+      </p>
+    </div>
+    <div class="card">
+      <span class="kicker">Code I delegated</span>
+      <h3>Boilerplate is Claude's job</h3>
+      <p>
+        Glue code like <code>future_frame()</code> + ISO-week seasonal-naive lookups. I
+        read every draft carefully, rewrote the <code>coalesce()</code> safety net after
+        spotting the week-52/53 edge case, and moved on.
+      </p>
+    </div>
+    <div class="card">
+      <span class="kicker">Where I pushed back</span>
+      <h3>Claude was wrong about MAPE</h3>
+      <p>
+        Claude suggested selecting on MAPE because "ops reasons in percentages." I argued
+        the overtime budget thinks in absolute units, not percentages — so the selection
+        metric had to match the cost structure. RMSE for selection, MAPE for reporting.
+        That disagreement ended up sharpening the whole spec.
+      </p>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <h3 class="reveal">The short version</h3>
+  <p class="reveal">
+    I wanted AI to compress my learning curve on modeltime, not outsource my judgment.
+    Ownership of modeling decisions and interpretation of results had to stay with me.
+    I think that's the bar for AI-native engineering work — and it's the bar I'm
+    calibrating toward as I move into professional data roles.
+  </p>
+</section>
+
+<section class="section container">
+  <h2 class="reveal">What I'm taking forward</h2>
+  <ol class="reveal">
+    <li>
+      <strong>Small series reward discipline, not cleverness.</strong> With 131 rows, the
+      best model was the simplest of the three. I spent real energy resisting the urge
+      to tune hyperparameters harder, and I think that discipline will pay off.
+    </li>
+    <li>
+      <strong>The overlay plot tells a story metrics can't.</strong> Pure ARIMA's RMSE is
+      just a number. The plot shows exactly where and how it failed. That's what an exec
+      actually cares about.
+    </li>
+    <li>
+      <strong>Prompting AI well is its own skill.</strong> The best moments in my planning
+      chat were when I pushed back on a confident suggestion. Good prompts look less like
+      "write me X" and more like "here's my thinking; critique it."
+    </li>
+  </ol>
+</section>
+
+<section class="section container">
+  <div class="reveal">
+    <h2>Let's talk.</h2>
+    <p class="lead">
+      If you're hiring for analytics, data science, or decision-science roles that reward
+      careful thinking and honest code, I'd love to hear from you.
+    </p>
+    <div class="hero-actions">
+      <a class="btn primary" href="mailto:asante.laryea.akrong@gmail.com">Email me</a>
+      <a class="btn" href="https://github.com/AsanteLA" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div>© 2026 Asante Laryea-Akrong</div>
+    <div>
+      <a href="https://github.com/AsanteLA" target="_blank" rel="noopener">GitHub</a> ·
+      <a href="mailto:asante.laryea.akrong@gmail.com">Email</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>

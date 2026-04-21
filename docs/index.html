@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weekly Demand Forecasting — Asante Laryea-Akrong</title>
+  <meta name="description" content="A 24-week-ahead demand forecasting pipeline for a regional distribution center. Built on tidymodels + modeltime, deployed as a Dockerized REST API with vetiver." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="brand"><span class="brand-dot"></span>Asante Laryea-Akrong</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="project.html">Project</a></li>
+      <li><a href="results.html">Results</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero container">
+  <span class="eyebrow reveal">Time Series Forecasting</span>
+  <h1 data-animate-title>Forecasting weekly demand, with room to think.</h1>
+  <p class="hero-lede reveal">
+    A 24-week-ahead demand forecasting pipeline for a regional distribution center —
+    built on <code>tidymodels</code> + <code>modeltime</code>, shipped as a
+    Dockerized REST API with <code>vetiver</code>, and written to be defensible
+    line-by-line in a code review.
+  </p>
+  <div class="hero-actions reveal">
+    <a href="project.html" class="btn primary">Read the project →</a>
+    <a href="results.html" class="btn">See the results</a>
+  </div>
+  <div class="chips reveal">
+    <span class="chip">R</span>
+    <span class="chip">tidymodels</span>
+    <span class="chip">modeltime</span>
+    <span class="chip">Prophet</span>
+    <span class="chip">ARIMA</span>
+    <span class="chip">vetiver</span>
+    <span class="chip">Docker</span>
+    <span class="chip">AWS S3</span>
+  </div>
+</header>
+
+<section class="section container">
+  <h2 class="reveal">The problem, in one paragraph.</h2>
+  <p class="lead reveal">
+    A regional distribution center wanted a forecast it could hand the ops team every Monday:
+    <em>how many units are we going to ship over each of the next 24 weeks, with enough lead
+    time to staff trucks, drivers, and temp labor?</em> The series is dominated by a big
+    early-February holiday peak — miss that peak and the ops team ends up paying overtime and
+    scrambling carriers. The cost of under-forecasting a peak is materially higher than the
+    cost of over-forecasting a quiet week, which means the model can't just be accurate in
+    aggregate; it has to be specifically resistant to missing the February spike.
+  </p>
+</section>
+
+<section class="section tight container">
+  <div class="grid stagger">
+    <div class="card">
+      <span class="kicker">Data</span>
+      <h3>131 weekly rows</h3>
+      <p>Feb 2022 → Aug 2024. Target is <code>weekly_units</code>; three regressors: holiday flag, temperature, transport cost index.</p>
+    </div>
+    <div class="card">
+      <span class="kicker">Approach</span>
+      <h3>Three-model bakeoff</h3>
+      <p>Auto-ARIMA vs. boosted ARIMA vs. Prophet, all sharing one recipe. Selection by RMSE; MAPE reported to stakeholders.</p>
+    </div>
+    <div class="card">
+      <span class="kicker">Winner</span>
+      <h3>Prophet w/ regressors</h3>
+      <p>RMSE 24,051 on a held-out 24-week test window. Refit on full data and forecast forward 24 weeks.</p>
+    </div>
+    <div class="card">
+      <span class="kicker">Deployment</span>
+      <h3>Docker + S3</h3>
+      <p>Best workflow wrapped in <code>vetiver_model()</code>, pinned locally, generated into a Docker image, and pinned to an S3 board for graded hold-out scoring.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section container">
+  <div class="reveal">
+    <h2>A preview.</h2>
+    <p class="lead">
+      The full write-up lives on the <a href="project.html">project page</a>.
+      Every metric and plot is reproducible by running <code>forecast_pipeline.R</code>
+      in RStudio — the script is commented line-by-line so the reasoning travels with the code.
+    </p>
+  </div>
+
+  <figure class="figure reveal">
+    <img src="assets/images/plot_series.png" alt="Weekly units shipped over time, with peak weeks highlighted" />
+    <figcaption>Weekly units shipped, Feb 2022 – Aug 2024. Red dots flag peak / holiday weeks.</figcaption>
+  </figure>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div>© 2026 Asante Laryea-Akrong · Built with R, modeltime, and a stubborn commitment to understanding every line.</div>
+    <div>
+      <a href="https://github.com/AsanteLA" target="_blank" rel="noopener">GitHub</a> ·
+      <a href="mailto:asante.laryea.akrong@gmail.com">Email</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>

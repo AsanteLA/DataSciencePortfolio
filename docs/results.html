@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Results · Weekly Demand Forecasting</title>
+  <meta name="description" content="Accuracy table, forecast comparison plot, and forward forecast for a 24-week demand forecasting pipeline." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="brand"><span class="brand-dot"></span>Asante Laryea-Akrong</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="project.html">Project</a></li>
+      <li><a href="results.html">Results</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero container">
+  <span class="eyebrow reveal">Results</span>
+  <h1 data-animate-title>Prophet wins. And the plot shows you why.</h1>
+  <p class="hero-lede reveal">
+    Three models, one shared recipe, 24 weeks of held-out data. Prophet with regressors
+    beats both ARIMA variants on every metric — but the interesting story is in the overlay,
+    not the table.
+  </p>
+</header>
+
+<section class="section container">
+  <h2 class="reveal">Accuracy on the 24-week test window</h2>
+  <table class="metrics-table reveal">
+    <thead>
+      <tr>
+        <th>Model</th>
+        <th>MAE</th>
+        <th>MAPE</th>
+        <th>SMAPE</th>
+        <th>RMSE</th>
+        <th>R²</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Regression w/ ARIMA errors</td>
+        <td class="num">19,910</td>
+        <td class="num">25.3%</td>
+        <td class="num">23.5%</td>
+        <td class="num">30,632</td>
+        <td class="num">0.06</td>
+      </tr>
+      <tr>
+        <td>ARIMA w/ XGBoost errors</td>
+        <td class="num">20,494</td>
+        <td class="num">27.2%</td>
+        <td class="num">21.3%</td>
+        <td class="num">39,5544</td>
+        <td class="num">0.03</td>
+      </tr>
+      <tr class="winner">
+        <td><strong>Prophet w/ regressors</strong></td>
+        <td class="num"><strong>21,078</strong></td>
+        <td class="num"><strong>29.54%</strong></td>
+        <td class="num"><strong>31.6%</strong></td>
+        <td class="num"><strong>26,222</strong></td>
+        <td class="num"><strong>0.41</strong></td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="small muted reveal">
+    Selection metric: RMSE. Prophet wins on every column, including the percentage-based
+    metrics that stakeholders care about.
+  </p>
+</section>
+
+<section class="section container">
+  <h2 class="reveal">Forecast comparison</h2>
+  <p class="reveal">
+    Each model's test-window predictions drawn on top of the full actual series. This is
+    the plot that tells you <em>how</em> each candidate fails, which no metric table can.
+  </p>
+  <figure class="figure reveal">
+    <img src="assets/images/forecast_comparison.png" alt="Forecast comparison on 24-week test set" />
+    <figcaption>Forecast comparison — actual (black) vs. each candidate over the 24-week test window.</figcaption>
+  </figure>
+  <p class="reveal">
+    Three takeaways:
+  </p>
+  <ul class="reveal">
+    <li><strong>Pure ARIMA flat-lines through the February peak.</strong> Without a regressor effect for the holiday flag, the auto-ARIMA has no way to anchor the spike.</li>
+    <li><strong>Boosted ARIMA recovers most of the peak shape.</strong> XGBoost picks up the non-linear holiday effect from the xregs — the peak lands at roughly the right height, though timing is slightly off.</li>
+    <li><strong>Prophet lands the peak cleanly AND keeps the quiet-week forecast smooth.</strong> Additive decomposition means the holiday effect and the baseline don't interfere with each other.</li>
+  </ul>
+</section>
+
+<section class="section container">
+  <h2 class="reveal">Forward forecast</h2>
+  <p class="reveal">
+    Prophet refit on the full 131-week series, then forecast 24 weeks forward. External
+    regressors for the forecast horizon are populated seasonal-naive by ISO week (holiday
+    flag and temperature) and last-observation-carried-forward (transport cost index).
+  </p>
+  <figure class="figure reveal">
+    <img src="assets/images/forward_forecast.png" alt="Forward forecast for next 24 weeks" />
+    <figcaption>Forward forecast — Aug 2024 through Jan 2025. 80% and 95% prediction intervals shown.</figcaption>
+  </figure>
+  <p class="reveal">
+    The model cleanly projects the September–October quiet stretch, nudges up into
+    Thanksgiving / Christmas, and anchors the early-February 2025 peak at roughly the
+    2024 level. Prediction intervals widen out toward the horizon, as they should.
+  </p>
+</section>
+
+<section class="section container">
+  <h2 class="reveal">Deployment</h2>
+  <p class="reveal">
+    The winning Prophet workflow ships as a Dockerized REST API via <code>vetiver</code>.
+    The pipeline writes the model to a local pin board, generates the Docker files, and
+    uploads the same artifact to an S3 board for hold-out scoring.
+  </p>
+  <pre class="reveal"><code># After forecast_pipeline.R finishes:
+mv Dockerfile.better Dockerfile
+docker build -t forecast-api .
+docker run -p 8000:8000 forecast-api
+
+# Explore at http://127.0.0.1:8000/__docs__/
+# Or POST a single week via httr::POST().</code></pre>
+</section>
+
+<section class="section container">
+  <div class="reveal">
+    <h2>Reproduce it.</h2>
+    <p class="lead">
+      Every number on this page comes from <code>forecast_pipeline.R</code>. Pull the repo,
+      open the script in RStudio, and run it top-to-bottom.
+    </p>
+    <div class="hero-actions">
+      <a class="btn primary" href="https://github.com/AsanteLA" target="_blank" rel="noopener">View on GitHub →</a>
+      <a class="btn" href="project.html">Back to the project</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div>© 2026 Asante Laryea-Akrong</div>
+    <div>
+      <a href="https://github.com/AsanteLA" target="_blank" rel="noopener">GitHub</a> ·
+      <a href="mailto:asante.laryea.akrong@gmail.com">Email</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>
