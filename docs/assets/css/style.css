@@ -151,27 +151,34 @@ a:hover { color: var(--ink); }
 .section.tight { padding: 48px 0; }
 
 /* --- Hero ------------------------------------------------------- */
-/* Full-bleed hero: the header spans the entire viewport width so
-   the ambient glow can extend to the right edge instead of getting
-   chopped off at the 1080px container boundary. We do this without
-   touching the HTML by overriding .hero.container and letting the
-   direct children pick up the centered-column behavior instead. */
+/* Full-bleed hero: the header spans the entire viewport width so the
+   ambient glow can extend to the right edge instead of getting chopped
+   off at the 1080px container boundary. Grid layout handles the
+   centered text column — every direct child (including inline-block
+   ones like the eyebrow) snaps to the same 1080px column, so the
+   eyebrow pill lines up perfectly with the H1 underneath it. */
 .hero {
   padding: 100px 0 64px;
   position: relative;
   overflow: hidden;
+  /* Minimum height guarantees the glow fades to transparent before the
+     hero ends — otherwise pages with short hero content (about / project
+     / results) would clip the glow at its bottom edge, creating a hard
+     horizontal line. This keeps the effect consistent across every page. */
+  min-height: 560px;
 }
 .hero.container {
   max-width: none;
   padding-left: 0;
   padding-right: 0;
+  display: grid;
+  grid-template-columns:
+    1fr
+    min(1080px, 100% - 56px)
+    1fr;
 }
 .hero.container > * {
-  max-width: 1080px;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 28px;
-  padding-right: 28px;
+  grid-column: 2;
   position: relative;
   z-index: 1;
 }
@@ -186,17 +193,29 @@ a:hover { color: var(--ink); }
   pointer-events: none;
   z-index: 0;
 }
+/* Editorial section label, not a button: uppercase accent text with a
+   short horizontal bar prefix. No background, no pill, no border. */
 .eyebrow {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
   font-size: .78rem;
   font-weight: 600;
-  letter-spacing: .14em;
+  letter-spacing: .18em;
   text-transform: uppercase;
   color: var(--accent);
-  background: var(--accent-soft);
-  padding: 6px 14px;
-  border-radius: 999px;
-  margin-bottom: 24px;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  margin-bottom: 28px;
+}
+.eyebrow::before {
+  content: "";
+  display: inline-block;
+  width: 28px;
+  height: 2px;
+  background: currentColor;
+  opacity: .75;
 }
 .hero-lede {
   font-size: clamp(1.1rem, 1.6vw, 1.25rem);
@@ -433,8 +452,13 @@ pre code { background: none; padding: 0; }
   .nav-inner { padding: 14px 20px; }
   .nav-links { gap: 14px; }
   .container { padding: 0 20px; }
-  .hero { padding: 64px 0 40px; }
-  .hero.container > * { padding-left: 20px; padding-right: 20px; }
+  .hero { padding: 64px 0 40px; min-height: 420px; }
+  .hero.container {
+    grid-template-columns:
+      1fr
+      min(1080px, 100% - 40px)
+      1fr;
+  }
   .hero::before { width: 440px; height: 440px; top: -120px; right: -140px; }
   .card { padding: 22px; }
 }
