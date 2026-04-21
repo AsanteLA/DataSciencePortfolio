@@ -151,18 +151,40 @@ a:hover { color: var(--ink); }
 .section.tight { padding: 48px 0; }
 
 /* --- Hero ------------------------------------------------------- */
+/* Full-bleed hero: the header spans the entire viewport width so
+   the ambient glow can extend to the right edge instead of getting
+   chopped off at the 1080px container boundary. We do this without
+   touching the HTML by overriding .hero.container and letting the
+   direct children pick up the centered-column behavior instead. */
 .hero {
   padding: 100px 0 64px;
   position: relative;
   overflow: hidden;
 }
+.hero.container {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+.hero.container > * {
+  max-width: 1080px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 28px;
+  padding-right: 28px;
+  position: relative;
+  z-index: 1;
+}
 .hero::before {
   content: "";
   position: absolute;
-  top: -160px; right: -200px;
-  width: 520px; height: 520px;
-  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  top: -180px;
+  right: -180px;
+  width: 680px;
+  height: 680px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 68%);
   pointer-events: none;
+  z-index: 0;
 }
 .eyebrow {
   display: inline-block;
@@ -365,16 +387,35 @@ pre code { background: none; padding: 0; }
   to { transform: translateY(0); }
 }
 
-/* --- Tag chips -------------------------------------------------- */
-.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+/* --- Tool caption labels --------------------------------------- */
+/* These are intentionally NOT pill-shaped and have no border/background,
+   so they don't read as clickable buttons. Styled as a monospace caption
+   line with dot separators: "R · tidymodels · modeltime · ...". */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 28px;
+  align-items: center;
+}
 .chip {
-  font-size: .8rem;
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: var(--bg-alt);
-  color: var(--ink-soft);
-  border: 1px solid var(--line);
-  font-weight: 500;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .78rem;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  color: var(--ink-mute);
+  font-weight: 400;
+  letter-spacing: .01em;
+  position: relative;
+}
+.chip + .chip::before {
+  content: "·";
+  position: absolute;
+  left: -12px;
+  color: var(--ink-mute);
+  opacity: .55;
 }
 
 /* --- Utility ---------------------------------------------------- */
@@ -393,6 +434,8 @@ pre code { background: none; padding: 0; }
   .nav-links { gap: 14px; }
   .container { padding: 0 20px; }
   .hero { padding: 64px 0 40px; }
+  .hero.container > * { padding-left: 20px; padding-right: 20px; }
+  .hero::before { width: 440px; height: 440px; top: -120px; right: -140px; }
   .card { padding: 22px; }
 }
 
